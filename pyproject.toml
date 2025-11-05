@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "datavents"
+dynamic = ["version"]
+description = "DataVents Open SDK: unified clients and normalization for Kalshi & Polymarket"
+authors = [{ name = "AJ Clemendor", email = "ajclemendor@gmail.com" }]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "requests>=2.31",
+  "pydantic>=2.3",
+  "websockets>=12",
+  "certifi>=2024.2.2",
+  "cryptography>=42",
+  "overrides>=7",
+  "python-dotenv>=1",
+  "eth-account>=0.11",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/ajclemendor/DataVentsOpen"
+Repository = "https://github.com/ajclemendor/DataVentsOpen.git"
+Issues = "https://github.com/ajclemendor/DataVentsOpen/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/datavents"]
+
+[tool.hatch.version]
+path = "src/datavents/__init__.py"
