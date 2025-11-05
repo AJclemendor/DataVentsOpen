@@ -28,7 +28,7 @@ DEFAULT_ASSETS = [
 @dataclass
 class Defaults:
     secs: float = 30.0
-    output: str = "human"  # human|json
+    output: str = "readable"  # readable|json
 
 
 def _split_csv(val: str) -> List[str]:
@@ -53,7 +53,7 @@ async def main() -> None:
         help="Comma-separated assets_ids to subscribe",
     )
     p.add_argument("--secs", type=float, default=d.secs)
-    p.add_argument("--output", choices=["human", "json"], default=d.output)
+    p.add_argument("--output", choices=["readable", "json"], default=d.output)
     p.add_argument("--log-level", default="INFO")
     p.add_argument("--internal-level", default="WARNING")
     args = p.parse_args()

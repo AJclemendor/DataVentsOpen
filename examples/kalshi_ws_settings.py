@@ -37,7 +37,6 @@ class WsExampleSettings:
     )
 
     # Output behavior
-    output: str = "human"  # "human" or "json"
+    output: str = "readable"  # "readable" or "json"
     events: List[str] = field(default_factory=list)  # empty => all; else subset of {ticker,orderbook,trade}
     show_acks: bool = True
-

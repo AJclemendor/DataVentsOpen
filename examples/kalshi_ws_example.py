@@ -85,7 +85,7 @@ def _parse_args(defaults: WsExampleSettings) -> argparse.Namespace:
         help="Console-friendly or JSON lines logging",
     )
     p.add_argument("--internal-level", default=defaults.internal_level, help="Level for internal libs (websockets, client)")
-    p.add_argument("--output", choices=["human", "json"], default=defaults.output, help="How to print events from the stream")
+    p.add_argument("--output", choices=["readable", "json"], default=defaults.output, help="How to print events from the stream")
     p.add_argument("--events", type=str, default=",".join(defaults.events) if defaults.events else "", help="Subset of events to print: ticker,orderbook,trade (comma-separated)")
     p.add_argument("--no-acks", action="store_true", help="Do not print subscription ACK lines")
     p.add_argument("-v", "--verbose", action="store_true", help="Shortcut for --log-level DEBUG")

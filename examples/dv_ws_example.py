@@ -24,7 +24,7 @@ from datavents.providers.config import Config as KalshiConfig
 class ExampleDefaults:
     vendors: str = "kalshi"  # kalshi|polymarket|both
     secs: float = 30.0
-    output: str = "human"  # human|json
+    output: str = "readable"  # readable|json
     kalshi_env: str = "live"  # paper|live
     kalshi_channels: List[str] = field(default_factory=lambda: ["ticker", "orderbook_delta", "trade"]) 
     tickers: List[str] = field(default_factory=list)
@@ -72,7 +72,7 @@ def _parse_args(defaults: ExampleDefaults) -> argparse.Namespace:
     )
     p.add_argument("--vendors", choices=["kalshi", "polymarket", "both"], default=defaults.vendors)
     p.add_argument("--secs", type=float, default=defaults.secs)
-    p.add_argument("--output", choices=["human", "json"], default=defaults.output)
+    p.add_argument("--output", choices=["readable", "json"], default=defaults.output)
     p.add_argument("--log-level", default="INFO")
     p.add_argument("--log-format", choices=["console", "json"], default="console")
     p.add_argument("--internal-level", default="WARNING", help="Log level for internal libs (websockets, client)")
@@ -141,7 +141,7 @@ async def main() -> None:
             return False
         return show_all or evt.event in requested
 
-    def _format_human(evt: NormalizedEvent) -> str:
+    def _format_readable(evt: NormalizedEvent) -> str:
         # Kalshi pretty prints similar to the dedicated example
         if evt.vendor == DvVendors.KALSHI:
             t = evt.event
@@ -164,7 +164,7 @@ async def main() -> None:
                 side = data.get("taker_side") or data.get("side")
                 suffix = f" [{side}]" if side else ""
                 return f"kalshi:trade {mt} {qty}@{px}{suffix}"
-        # Polymarket conservative human print
+        # Polymarket conservative readable print
         if evt.vendor == DvVendors.POLYMARKET:
             t = evt.event
             data = evt.data
@@ -202,7 +202,7 @@ async def main() -> None:
                 )
             )
         else:
-            print(_format_human(evt))
+            print(_format_readable(evt))
 
     async def _auto_stop() -> None:
         await asyncio.sleep(float(args.secs))
@@ -215,4 +215,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
