@@ -17,6 +17,8 @@ from datavents.providers.kalshi.base_client import BaseKalshiClient
 from datavents.providers.kalshi.rest_auth import KalshiAuth
 from datavents.providers.polymarket.ws_client import PolymarketWsClient
 from datavents.vendors import DvVendors
+from datavents.utils.resolve import resolve_polymarket_assets_ids
+from datavents.providers.polymarket.polymarket_rest_noauth import PolymarketRestNoAuth
 
 
 @dataclass
@@ -179,9 +181,19 @@ class DvWsClient:
         return tokens or None
 
     def _resolve_poly_ids(self, sub: DvSubscription) -> Optional[List[str]]:
+        # Prefer explicit assets_ids
         if sub.polymarket_assets_ids:
             return self._dedupe_trim(sub.polymarket_assets_ids)
+        # Best-effort: try to resolve tickers_or_ids into assets_ids via REST
         if sub.tickers_or_ids:
+            try:
+                client = PolymarketRestNoAuth()
+                resolved = resolve_polymarket_assets_ids(list(sub.tickers_or_ids), client=client, fetch=True)
+                if resolved:
+                    return self._dedupe_trim(resolved)
+            except Exception:
+                pass
+            # Fallback: pass through as-is
             return self._dedupe_trim(sub.tickers_or_ids)
         return None
 

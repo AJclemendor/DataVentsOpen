@@ -15,6 +15,8 @@ from .normalize import (
     normalize_market_history,
 )
 from .utils.vendors import extract_vendors, _extract_vendors
+from .utils.ws import build_ws_info, _send_ws_info
+from .utils.resolve import resolve_polymarket_assets_ids, _resolve_polymarket_assets_ids
 from .schemas import *  # re-export models
 
 __all__ = [
@@ -28,5 +30,9 @@ __all__ = [
     "NormalizedEvent",
     "extract_vendors",
     "_extract_vendors",
+    "build_ws_info",
+    "_send_ws_info",
+    "resolve_polymarket_assets_ids",
+    "_resolve_polymarket_assets_ids",
     "__version__",
 ]

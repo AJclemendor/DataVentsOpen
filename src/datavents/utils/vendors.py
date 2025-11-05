@@ -75,6 +75,8 @@ def extract_vendors(value: Any = None, *, default: Sequence[DvVendors] = (DvVend
     """
     tokens = _normalize_token(value)
     if not tokens:
+        if strict and value is not None:
+            raise ValueError("No valid vendors parsed from input")
         tokens = list(default)
 
     # de‑dupe and order: KALSHI, POLYMARKET

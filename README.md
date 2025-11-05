@@ -244,6 +244,37 @@ python examples/search_events.py --q "election" --limit 5
 
 ---
 
+## Utilities
+
+- `extract_vendors(value, *, strict=False)` → `[DvVendors, ...]`
+  - Accepts flexible input such as `"kalshi"`, `"poly,kalshi"`, `"all"`, `Provider.kalshi`, or a list of mixed tokens.
+  - Returns a stable, de‑duplicated order: `[DvVendors.KALSHI, DvVendors.POLYMARKET]` when both.
+  - Back‑compat alias: `_extract_vendors(...)`.
+
+```python
+from datavents import extract_vendors, DvVendors
+
+assert extract_vendors("all") == [DvVendors.KALSHI, DvVendors.POLYMARKET]
+assert extract_vendors(["k", "pm"]) == [DvVendors.KALSHI, DvVendors.POLYMARKET]
+```
+
+- `build_ws_info(subscription)` → dict summarizing a `DvSubscription` (WS URLs, channels, identifiers).
+  - Back‑compat alias: `_send_ws_info(subscription)` for legacy callers.
+
+```python
+from datavents import DvSubscription, DvVendors, build_ws_info
+
+sub = DvSubscription(
+    vendors=(DvVendors.KALSHI, DvVendors.POLYMARKET),
+    kalshi_market_tickers=["SER-ABC-123"],
+    polymarket_assets_ids=["asset-1"],
+)
+info = build_ws_info(sub)
+print(info["kalshi"]["ws_url"], info["polymarket"]["ws_url"])  # ready for UIs/logging
+```
+
+---
+
 ## Limitations & Notes
 
 - This SDK targets provider public endpoints. Some features (e.g., private Kalshi WS) require valid credentials.
