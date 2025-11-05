@@ -38,6 +38,7 @@ htmlcov/
 .env
 .env.*
 *.pem
+.pypirc
 
 # Misc
 .server.pid
