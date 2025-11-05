@@ -37,3 +37,11 @@ packages = ["src/datavents"]
 
 [tool.hatch.version]
 path = "src/datavents/__init__.py"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src",
+]
+testpaths = [
+  "tests",
+]

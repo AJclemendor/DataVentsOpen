@@ -4,12 +4,8 @@ from __future__ import annotations
 Unified request/response schemas for Kalshi + Polymarket.
 
 Goals
-- Provide normalized models for the REST endpoints exposed in `flask_app.py`:
-  - /api/health
-  - /api/search
-  - /api/event
-  - /api/market
-  - /api/market/history
+- Provide normalized models for REST-style endpoints your application may expose:
+  - health, search, event, market, market/history
 - Provide normalized models for WS envelopes (ticker/orderbook/trade) used by the
   DV WS client.
 - Preserve provider-specific information so we never lose data. Every normalized
@@ -397,4 +393,3 @@ class SearchOptionsResponse(BaseModel):
     providers: List[SearchOptionsItem]
     order: List[SearchOptionsItem]
     status: List[SearchOptionsItem]
-

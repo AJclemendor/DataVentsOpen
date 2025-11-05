@@ -9,7 +9,7 @@ underlying clients while offering a handful of conveniences:
 - Elections API integrations to surface Kalshi discovery/search use cases
 - WS helpers that return a small handle for lifecycle control
 
-The class is designed for server‑side use (e.g., FastAPI routers). All network
+The class is designed for server‑side use within any backend or script. All network
 calls are delegated to provider client modules in `src/client/...`.
 """
 
