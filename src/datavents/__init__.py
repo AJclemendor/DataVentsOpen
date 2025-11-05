@@ -6,13 +6,15 @@ from .client import (
     DataVentsOrderSortParams,
     DataVentsStatusParams,
 )
-from .ws import DvWsClient, DvSubscription, DvVendors, NormalizedEvent
+from .vendors import DvVendors
+from .ws import DvWsClient, DvSubscription, NormalizedEvent
 from .normalize import (
     normalize_market,
     normalize_event,
     normalize_search_response,
     normalize_market_history,
 )
+from .utils.vendors import extract_vendors, _extract_vendors
 from .schemas import *  # re-export models
 
 __all__ = [
@@ -24,5 +26,7 @@ __all__ = [
     "DvSubscription",
     "DvVendors",
     "NormalizedEvent",
+    "extract_vendors",
+    "_extract_vendors",
     "__version__",
 ]

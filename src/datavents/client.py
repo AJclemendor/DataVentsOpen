@@ -156,21 +156,24 @@ class DataVentsNoAuthClient:
         status_params: DataVentsStatusParams,
         **params: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """
+        """Search events using provider discovery endpoints (parallel for ALL).
 
-        Normalizing market struct,
-        This is the struct
+        Parameters
+        - provider: choose `KALSHI`, `POLYMARKET`, or `ALL` to fan out in parallel.
+        - query: free‑text search string (coerced to a space for Polymarket if empty).
+        - limit: per‑provider page size (Kalshi `page_size`, Polymarket `limit_per_type`).
+        - page: results page (Polymarket starts at 1; Kalshi uses cursors internally).
+        - order_sort_params: high‑level sort mapped to provider‑specific values.
+        - status_params: high‑level status filter mapped to provider‑specific values.
+        - params: optional `kalshi_params` and/or `polymarket_params` dicts forwarded to providers.
 
-        [Event] Where will Barron Trump attend College?
-            [Market] Will Barron attend Georgetown?
-            [Market] Will Barron attend NYU?
-            [Market] Will Barron attend UPenn?
-            [Market] Will Barron attend Harvard?
-            [Market] Will Barron attend another college?
+        Returns
+        - list of dict: `[{"provider": "kalshi|polymarket", "data": <raw provider payload>}, ...]`
 
-
-        for now just worry abt making both calls and then worry later abt the normalizatiobn
-
+        Notes
+        - Kalshi series search does not accept `status`; when `scope="series"` and a non‑ALL
+          status is requested, this method uses Kalshi events search instead.
+        - Use `normalize_search_response(...)` to convert raw payloads into unified models.
         """
 
         polymarket_params = params.get("polymarket_params", {})
@@ -284,10 +287,13 @@ class DataVentsNoAuthClient:
         query: str = "",
         order_sort_params: DataVentsOrderSortParams = DataVentsOrderSortParams.ORDER_BY_TRENDING,
     ) -> List[Dict[str, Any]]:
-        """List events from one or both providers (no‑auth) via their search endpoints.
+        """List events from one or both providers using search endpoints.
 
-        Using provider search keeps params simple and avoids provider‑specific quirks
-        on raw list endpoints. Returns `[{"provider": "kalshi|polymarket", "data": ...}, ...]`.
+        Returns
+        - list of dict blocks with `provider` and raw `data` fields.
+
+        Tip
+        - Feed the `data` field to `normalize_search_response(...)` when a unified schema is desired.
         """
 
         assert status_params in DataVentsStatusParams, f"Invalid status params: {status_params}"
@@ -362,12 +368,12 @@ class DataVentsNoAuthClient:
     ) -> List[Dict[str, Any]]:
         """Get an event by provider‑specific identifier(s).
 
-        Supply the appropriate identifier(s) per provider:
-        - Kalshi → `kalshi_event_ticker`
-        - Polymarket → `polymarket_id` or `polymarket_slug`
+        Identifiers
+        - Kalshi: `kalshi_event_ticker`
+        - Polymarket: numeric `polymarket_id` or string `polymarket_slug`
 
-        When `provider` is `ALL`, whichever identifiers are provided will be used
-        and results will be returned in a list of provider‑tagged objects.
+        Returns
+        - list with one block for the called provider(s): `[{"provider": ..., "data": <raw>}]`
         """
 
         def call_kalshi_get():
@@ -451,8 +457,9 @@ class DataVentsNoAuthClient:
     ) -> List[Dict[str, Any]]:
         """List markets across providers.
 
-        - Kalshi: uses `get_markets` with status filters (no server-side q).
-        - Polymarket: uses `public_search` via `search_markets_events_profiles` and extracts markets (q coerced to space if empty).
+        Behavior
+        - Kalshi: currently leverages events search (markets are nested under events).
+        - Polymarket: uses public‑search with `type="markets"`, normalized to a top‑level `markets` list.
         """
 
         assert status_params in DataVentsStatusParams
@@ -559,8 +566,9 @@ class DataVentsNoAuthClient:
     ) -> List[Dict[str, Any]]:
         """Get a market by provider-specific identifier.
 
-        - Kalshi → `kalshi_ticker`
-        - Polymarket → `polymarket_id` or `polymarket_slug`
+        Identifiers
+        - Kalshi: `kalshi_ticker`
+        - Polymarket: numeric `polymarket_id` or string `polymarket_slug`
         """
 
         def call_kalshi_get():
@@ -602,5 +610,5 @@ class DataVentsNoAuthClient:
             raise ValueError(f"Invalid provider: {provider}")
 
     def get_market_tags(self, market_id: int) -> Any:
-        """Fetch Polymarket market tags by ID (helper)."""
+        """Fetch Polymarket market tags by numeric ID (helper)."""
         return self._poly_rest.get_market_tags_by_id(id=int(market_id))

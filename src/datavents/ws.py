@@ -16,11 +16,7 @@ from datavents.providers.kalshi.ws_client import (
 from datavents.providers.kalshi.base_client import BaseKalshiClient
 from datavents.providers.kalshi.rest_auth import KalshiAuth
 from datavents.providers.polymarket.ws_client import PolymarketWsClient
-
-
-class DvVendors(str, Enum):
-    KALSHI = "kalshi"
-    POLYMARKET = "polymarket"
+from datavents.vendors import DvVendors
 
 
 @dataclass
