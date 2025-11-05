@@ -1,8 +1,44 @@
 __pycache__/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.cache/
+
+# Virtualenvs
 .venv/
+.pkgtest/
+
+# Build artifacts
 dist/
 build/
 *.egg-info/
+*.dist-info/
+pip-wheel-metadata/
+
+# Bytecode
 *.pyc
 *.pyo
+*.pyd
+
+# Coverage/Reports
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# IDE/editor
+.idea/
+.vscode/
+.DS_Store
+.python-version
+
+# Environment/secrets
+.env
+.env.*
+*.pem
+
+# Misc
+.server.pid
+__pypackages__/
