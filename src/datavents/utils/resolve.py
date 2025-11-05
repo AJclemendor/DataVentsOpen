@@ -7,6 +7,22 @@ try:
     from datavents.providers.polymarket.polymarket_rest_noauth import PolymarketRestNoAuth
 except Exception:  # pragma: no cover - type hints only
     PolymarketRestNoAuth = object  # type: ignore
+try:
+    # For unified get_market calls from back-compat alias
+    from datavents.client import DataVentsProviders as _DVProviders
+except Exception:  # pragma: no cover
+    _DVProviders = None  # type: ignore
+
+try:
+    from datavents.utils.params import collect_strings, first_int, first_str
+except Exception:  # pragma: no cover
+    # Fallback no-op shims (won't be used in normal package runtime)
+    def collect_strings(source: Optional[Mapping[str, Any]], keys: Sequence[str]) -> List[str]:
+        return []
+    def first_int(keys: Sequence[str], *sources: Optional[Mapping[str, Any]]) -> Optional[int]:
+        return None
+    def first_str(keys: Sequence[str], *sources: Optional[Mapping[str, Any]]) -> Optional[str]:
+        return None
 
 
 AssetLike = Union[str, int]
@@ -203,9 +219,59 @@ def _resolve_polymarket_assets_ids(*args: Any, **kwargs: Any) -> List[str]:
     - _resolve_polymarket_assets_ids(payload, market, client)
     """
     if len(args) >= 3 and isinstance(args[0], Mapping) and isinstance(args[1], Mapping):
-        src_list: List[Any] = [args[0], args[1]]
+        payload: Mapping[str, Any] = args[0]
+        market: Mapping[str, Any] = args[1]
         client = args[2]
-        return resolve_polymarket_assets_ids(src_list, client=client, fetch=True)
+        # 1) Direct collection from provided payload/market
+        ids: List[str] = []
+        ids.extend(find_polymarket_asset_ids(payload))
+        ids.extend(find_polymarket_asset_ids(market))
+        if ids:
+            # de-dup while preserving order
+            seen = set(); out=[]
+            for i in ids:
+                if i not in seen:
+                    out.append(i); seen.add(i)
+            return out
+        # 2) Try resolving via id/slug if present
+        pid = first_int(("market_id", "marketId", "id", "vendor_market_id", "vendorMarketId"), market, payload)
+        slug = first_str(("slug", "market_slug", "marketSlug", "vendor_market_slug", "vendorMarketSlug"), market, payload)
+        if (pid is not None or slug) and client is not None:
+            try:
+                # client is DataVentsNoAuthClient in caller; fetch market via unified method
+                if _DVProviders is not None and hasattr(client, 'get_market'):
+                    res = client.get_market(
+                        provider=_DVProviders.POLYMARKET,
+                        polymarket_id=pid,
+                        polymarket_slug=slug or None,
+                    )
+                else:
+                    raise RuntimeError('unified client unavailable')
+            except Exception:
+                try:
+                    # fallback: assume PolymarketRestNoAuth-like client
+                    if pid is not None:
+                        res = [{"data": client.get_market_by_id(id=int(pid), include_tag=False)}]
+                    else:
+                        res = [{"data": client.get_market_by_slug(slug=str(slug), include_tag=False)}]
+                except Exception:
+                    res = []
+            data = (res[0].get("data") if isinstance(res, list) and res else None) or {}
+            ids = []
+            if isinstance(data, Mapping):
+                ids.extend(find_polymarket_asset_ids(data))
+                if not ids:
+                    for key in ("market", "data"):
+                        nested = data.get(key)
+                        if isinstance(nested, Mapping):
+                            ids.extend(find_polymarket_asset_ids(nested))
+            if ids:
+                seen=set(); out=[]
+                for i in ids:
+                    if i not in seen:
+                        out.append(i); seen.add(i)
+                return out
+        return []
     if len(args) >= 1:
         source = args[0]
         return resolve_polymarket_assets_ids(source, client=kwargs.get("client"), fetch=kwargs.get("fetch", True), max_items=kwargs.get("max_items"))
