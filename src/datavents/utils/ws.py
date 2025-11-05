@@ -10,6 +10,9 @@ from datavents.providers.polymarket.ws_client import (
     MARKET_WS_URL as POLY_WS_URL,
     APPLICATION_PING_SECONDS as POLY_APP_PING,
 )
+from datavents.ws import NormalizedEvent
+from typing import Any
+import json
 
 
 def _kalshi_ws_base(env: KalshiConfig) -> str:
@@ -59,3 +62,29 @@ def _send_ws_info(subscription: DvSubscription, *, include_urls: bool = True) ->
     """Back-compat alias used by older apps; returns the same dict as build_ws_info."""
     return build_ws_info(subscription, include_urls=include_urls)
 
+
+def json_default(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        try:
+            return value.model_dump()
+        except Exception:
+            pass
+    if isinstance(value, (set, frozenset)):
+        return list(value)
+    if isinstance(value, (bytes, bytearray)):
+        try:
+            return value.decode("utf-8")
+        except Exception:
+            return value.decode("utf-8", errors="ignore")
+    return str(value)
+
+
+def event_payload(ev: NormalizedEvent) -> str:
+    envelope = {
+        "vendor": ev.vendor.value if isinstance(ev.vendor, DvVendors) else str(ev.vendor),
+        "event": ev.event,
+        "market": ev.market,
+        "ts": ev.received_ts,
+        "data": ev.data,
+    }
+    return json.dumps(envelope, default=json_default)

@@ -78,6 +78,11 @@ def _collect_asset_ids_from_obj(obj: Any, *, max_items: Optional[int] = None) ->
     return uniq if max_items is None else uniq[: max(0, int(max_items))]
 
 
+def find_polymarket_asset_ids(obj: Any, *, max_items: Optional[int] = None) -> List[str]:
+    """Public helper to collect asset/clob ids from arbitrary nested objects."""
+    return _collect_asset_ids_from_obj(obj, max_items=max_items)
+
+
 def resolve_polymarket_assets_ids(
     source: Any,
     *,
@@ -190,5 +195,18 @@ def resolve_polymarket_assets_ids(
 
 
 # Back‑compat alias for legacy callers
-def _resolve_polymarket_assets_ids(source: Any, *, client: Optional[PolymarketRestNoAuth] = None, fetch: bool = True, max_items: Optional[int] = None) -> List[str]:
-    return resolve_polymarket_assets_ids(source, client=client, fetch=fetch, max_items=max_items)
+def _resolve_polymarket_assets_ids(*args: Any, **kwargs: Any) -> List[str]:
+    """Back‑compat alias accepting multiple signatures.
+
+    Supported forms:
+    - _resolve_polymarket_assets_ids(source, *, client=None, fetch=True, max_items=None)
+    - _resolve_polymarket_assets_ids(payload, market, client)
+    """
+    if len(args) >= 3 and isinstance(args[0], Mapping) and isinstance(args[1], Mapping):
+        src_list: List[Any] = [args[0], args[1]]
+        client = args[2]
+        return resolve_polymarket_assets_ids(src_list, client=client, fetch=True)
+    if len(args) >= 1:
+        source = args[0]
+        return resolve_polymarket_assets_ids(source, client=kwargs.get("client"), fetch=kwargs.get("fetch", True), max_items=kwargs.get("max_items"))
+    return []

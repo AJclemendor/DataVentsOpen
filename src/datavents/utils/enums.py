@@ -9,11 +9,8 @@ E = TypeVar("E", bound=Enum)
 
 def _norm(s: str) -> str:
     s = s.strip().lower()
-    # unify common separators and trim
-    s = s.replace("-", "_").replace(" ", "_")
-    while "__" in s:
-        s = s.replace("__", "_")
-    return s.strip("_")
+    # remove common separators entirely for tolerant matching
+    return "".join(ch for ch in s if ch.isalnum())
 
 
 def enum_from_param(
@@ -69,8 +66,12 @@ def enum_from_param(
         for member in enum:
             try:
                 mv = member.value
-                if isinstance(mv, str) and (_norm(mv) == key or mv.lower() == raw.lower()):
-                    return member
+                if isinstance(mv, str):
+                    if _norm(mv) == key or mv.lower() == raw.lower():
+                        return member
+                    # Permit kebab/space variations like "ban-ana"
+                    if _norm(raw) == _norm(mv):
+                        return member
             except Exception:
                 pass
 
@@ -112,4 +113,3 @@ def _enum_from_param(
 ) -> Optional[E]:
     """Back-compat alias used in older codebases."""
     return enum_from_param(value, enum, aliases=aliases, default=default, strict=strict)
-
