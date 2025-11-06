@@ -27,6 +27,9 @@ from .base_client import BaseKalshiClient
 from .rest_auth import KalshiAuth
 from ..config import Config
 from ..shared_connection.rate_limit import RateLimitConfig
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class KalshiRestAuth(KalshiRestNoAuth):
@@ -86,4 +89,9 @@ class KalshiRestAuth(KalshiRestNoAuth):
             except Exception:
                 pass
 
+        # Trace at debug level to avoid noisy logs by default
+        try:
+            logger.debug("kalshi.rest.get_market_orderbook ticker=%s depth=%s", ticker, params.get("depth"))
+        except Exception:
+            pass
         return self.get(self.markets_url + f"/{ticker}/orderbook", params=params)

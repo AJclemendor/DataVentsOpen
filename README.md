@@ -136,6 +136,26 @@ get_market(provider, kalshi_ticker=None, polymarket_id=None, polymarket_slug=Non
 - Supply the proper identifier for each provider (Kalshi uses tickers; Polymarket supports id or slug).
 - With `provider=ALL`, only providers with identifiers provided are called.
 
+### Orderbook (Kalshi, lazy auth)
+While the client is "no‑auth" by default, it can lazily spin up a signed Kalshi REST client for auth‑only routes:
+
+```python
+from datavents import DataVentsNoAuthClient, DataVentsProviders
+from datavents.providers.config import Config as ProviderConfig
+
+dv = DataVentsNoAuthClient()
+
+# Direct helper (returns raw provider JSON)
+ob = dv.get_kalshi_market_orderbook("ABC-24-XYZ-T50", depth=50, env=ProviderConfig.LIVE)
+
+# Unified facade (list with provider tag)
+res = dv.get_market_orderbook(DataVentsProviders.KALSHI, kalshi_ticker="ABC-24-XYZ-T50", depth=50)
+```
+
+Set environment variables for Kalshi auth:
+- LIVE: `KALSHI_API_KEY`, `KALSHI_PRIVATE_KEY` (PEM path)
+- PAPER: `KALSHI_API_KEY_PAPER`, `KALSHI_PRIVATE_KEY_PAPER`
+
 ### Provider‑specific helpers
 - `get_event_metadata(event_ticker: str)` – Kalshi event metadata.
 - `get_event_tags(event_id: int)`, `get_market_tags(market_id: int)` – Polymarket tags.

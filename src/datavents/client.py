@@ -32,6 +32,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Third-party imports
 import requests
+import logging
 
 # Provider clients
 from datavents.providers.kalshi.kalshi_rest_noauth import KalshiRestNoAuth
@@ -54,6 +55,7 @@ from datavents.providers.polymarket.polymarket_rest_noauth import (
 )
 from enum import Enum
 
+logger = logging.getLogger(__name__)
 
 class DataVentsProviders(Enum):
     KALSHI = "kalshi"
@@ -653,6 +655,10 @@ class DataVentsNoAuthClient:
             if self._kalshi_rest_auth_live is None:
                 self._kalshi_rest_auth_live = KalshiRestAuth(config=ProviderConfig.LIVE)
             client = self._kalshi_rest_auth_live
+        try:
+            logger.debug("dv.client.get_kalshi_market_orderbook env=%s ticker=%s depth=%s", env.value, ticker, depth)
+        except Exception:
+            pass
         return client.get_market_orderbook(ticker, depth)
 
     def get_market_orderbook(

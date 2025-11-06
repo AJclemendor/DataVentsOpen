@@ -43,3 +43,8 @@ htmlcov/
 # Misc
 .server.pid
 __pypackages__/
+*.key
+
+# Test artifacts
+.test_output/
+.test-output/

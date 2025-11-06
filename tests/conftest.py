@@ -5,12 +5,26 @@ import sys
 
 
 def pytest_configure(config):
-    root = Path(__file__).parent.parent.parent.parent
-    # Ensure `backend/src` is on sys.path for package imports
+    # Find nearest repo root that has a `src/datavents` package
+    here = Path(__file__).resolve()
+    root = None
+    for p in [here.parent] + list(here.parents):
+        if (p / "src" / "datavents").exists():
+            root = p
+            break
+    if root is None:
+        # Fallback to historical relative
+        root = Path(__file__).parent.parent.parent.parent
+    # Ensure `src` is on sys.path for package imports
     src_dir = root / "src"
     if str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
-    for d in (root / ".test_output", root / ".test-output", root / ".test_output" / "normalized"):
+    # Create test output dirs (gitignored)
+    for d in (
+        root / ".test_output",
+        root / ".test-output",
+        root / ".test_output" / "normalized",
+    ):
         try:
             d.mkdir(parents=True, exist_ok=True)
         except Exception:
