@@ -280,6 +280,70 @@ class PolymarketRestNoAuth(BasePolymarketClient):
             },
         )
 
+    # ---- CLOB order book endpoints (public, no auth) ------------------------
+    # These live on the clob.polymarket.com host, not the gamma API.
+    # We call them directly with proper rate limiting and timeout.
+
+    def _clob_get(self, path: str, params: Dict[str, Any] | None = None) -> Any:
+        import requests as _rq
+        self.rate_limit_config.rate_limit()
+        url = f"https://clob.polymarket.com{path}"
+        r = _rq.get(url, params=params or {}, timeout=self._timeout_seconds)
+        self.raise_if_bad_response(r)
+        return r.json()
+
+    def _clob_post(self, path: str, body: Any) -> Any:
+        import requests as _rq
+        self.rate_limit_config.rate_limit()
+        url = f"https://clob.polymarket.com{path}"
+        r = _rq.post(url, json=body, timeout=self._timeout_seconds)
+        self.raise_if_bad_response(r)
+        return r.json()
+
+    def get_orderbook(self, token_id: str, *, side: str | None = None) -> Any:
+        """Fetch a single order book snapshot for a token from CLOB.
+
+        GET https://clob.polymarket.com/book?token_id=... [&side=BUY|SELL]
+
+        Args
+        - token_id: CLOB token id (string)
+        - side: optional filter ("BUY" or "SELL") supported by some operations
+        """
+        params: Dict[str, Any] = {"token_id": str(token_id)}
+        if side:
+            s = str(side).upper()
+            if s in {"BUY", "SELL"}:
+                params["side"] = s
+        return self._clob_get("/book", params=params)
+
+    def get_orderbooks(self, requests_list: list[dict[str, Any]]) -> Any:
+        """Fetch multiple order book summaries by POSTing a list of requests.
+
+        POST https://clob.polymarket.com/books
+
+        Body example (list of objects):
+          [{"token_id": "...", "side": "SELL"}, {"token_id": "..."}]
+        """
+        if not isinstance(requests_list, list) or not requests_list:
+            raise ValueError("requests_list must be a non-empty list of dicts")
+        payload: list[dict[str, Any]] = []
+        for it in requests_list:
+            if not isinstance(it, dict):
+                continue
+            token_id = str(it.get("token_id") or "").strip()
+            if not token_id:
+                continue
+            entry: dict[str, Any] = {"token_id": token_id}
+            side = it.get("side")
+            if isinstance(side, str) and side.strip():
+                s = side.strip().upper()
+                if s in {"BUY", "SELL"}:
+                    entry["side"] = s
+            payload.append(entry)
+        if not payload:
+            raise ValueError("No valid items provided; each item requires token_id")
+        return self._clob_post("/books", body=payload)
+
     def get_market_tags_by_id(self, id: int):
         return self.get(f"/markets/{id}/tags")
 
