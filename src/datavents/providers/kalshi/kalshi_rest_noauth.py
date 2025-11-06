@@ -159,6 +159,8 @@ class KalshiRestNoAuth(BaseKalshiClient):
             },
         )
 
+    # Intentionally no orderbook method here; the signed path lives in KalshiRestAuth.
+
     def get_series(self, series_ticker: str):
         """Retrieves the series for a market."""
         return self.get(

@@ -8,6 +8,7 @@ except Exception:  # pragma: no cover
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 import os
+from typing import Any, Dict
 import base64
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -68,3 +69,7 @@ class KalshiAuth:
             return base64.b64encode(signature).decode("utf-8")
         except InvalidSignature as e:
             raise ValueError("RSA sign PSS failed") from e
+
+# Note: orderbook helper lives on the signed KalshiRestAuth client and uses
+# its inherited `get(...)` method from BaseKalshiClient to ensure proper
+# request signing and header construction.

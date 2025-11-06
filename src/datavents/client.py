@@ -1,5 +1,5 @@
 """Unified, no‑auth DataVents client.
-d
+
 This module provides a thin façade over provider no‑auth clients for Kalshi and
 Polymarket. It intentionally keeps parameter and response shapes close to the
 underlying clients while offering a handful of conveniences:
@@ -8,6 +8,15 @@ underlying clients while offering a handful of conveniences:
 - Optional fuzzy filtering (`q`) over provider list responses
 - Elections API integrations to surface Kalshi discovery/search use cases
 - WS helpers that return a small handle for lifecycle control
+
+Auth note (lazy)
+----------------
+- While the default is no‑auth, this module can lazily initialize signed
+  provider clients for endpoints that require authentication. For example,
+  ``get_kalshi_market_orderbook(...)`` spins up a signed Kalshi REST client
+  (LIVE or PAPER) on first use, pulling credentials from the environment.
+  This keeps common flows dependency‑free while still enabling auth‑only
+  routes when explicitly requested.
 
 The class is designed for server‑side use within any backend or script. All network
 calls are delegated to provider client modules in `src/client/...`.
@@ -26,6 +35,7 @@ import requests
 
 # Provider clients
 from datavents.providers.kalshi.kalshi_rest_noauth import KalshiRestNoAuth
+from datavents.providers.kalshi.kalshi_rest_auth import KalshiRestAuth
 from datavents.providers.polymarket.polymarket_rest_noauth import (
     PolymarketRestNoAuth,
 )
@@ -122,12 +132,19 @@ class DataVentsNoAuthClient:
       and mirrors the underlying clients exactly.
     - For polymarket `get_market`/`get_event` you must specify `id` or `slug`.
     - For kalshi `get_market`/`get_event` you must specify `ticker`/`event_ticker`.
+    - Lazy auth: certain helpers (e.g., ``get_kalshi_market_orderbook`` and the
+      unified ``get_market_orderbook`` facade for Kalshi) create an authenticated
+      client on first call if the required env vars are present
+      (``KALSHI_API_KEY[_PAPER]``, ``KALSHI_PRIVATE_KEY[_PAPER]``).
     """
 
     def __init__(self) -> None:
         # REST clients
         self._kalshi_rest = KalshiRestNoAuth()
         self._poly_rest = PolymarketRestNoAuth()
+        # Lazy auth REST clients (initialized on first use)
+        self._kalshi_rest_auth_live: Optional[KalshiRestAuth] = None
+        self._kalshi_rest_auth_paper: Optional[KalshiRestAuth] = None
 
         # WS auth tokens/objects (no‑auth configs)
         self._kalshi_auth = KalshiAuth(config=ProviderConfig.NOAUTH)
@@ -612,3 +629,58 @@ class DataVentsNoAuthClient:
     def get_market_tags(self, market_id: int) -> Any:
         """Fetch Polymarket market tags by numeric ID (helper)."""
         return self._poly_rest.get_market_tags_by_id(id=int(market_id))
+
+    # ==== Auth-required helpers ============================================
+    def get_kalshi_market_orderbook(
+        self,
+        ticker: str,
+        *,
+        depth: Optional[int] = None,
+        env: ProviderConfig = ProviderConfig.LIVE,
+    ) -> Dict[str, Any]:
+        """Fetch Kalshi market orderbook using signed REST.
+
+        Args
+        - ticker: market ticker (e.g., "ABC-24-XYZ-T50")
+        - depth: optional 0..100 (0=all levels)
+        - env: ProviderConfig.LIVE or ProviderConfig.PAPER
+        """
+        if env == ProviderConfig.PAPER:
+            if self._kalshi_rest_auth_paper is None:
+                self._kalshi_rest_auth_paper = KalshiRestAuth(config=ProviderConfig.PAPER)
+            client = self._kalshi_rest_auth_paper
+        else:
+            if self._kalshi_rest_auth_live is None:
+                self._kalshi_rest_auth_live = KalshiRestAuth(config=ProviderConfig.LIVE)
+            client = self._kalshi_rest_auth_live
+        return client.get_market_orderbook(ticker, depth)
+
+    def get_market_orderbook(
+        self,
+        provider: DataVentsProviders,
+        *,
+        kalshi_ticker: Optional[str] = None,
+        depth: Optional[int] = None,
+        kalshi_env: ProviderConfig = ProviderConfig.LIVE,
+    ) -> List[Dict[str, Any]]:
+        """Unified orderbook facade.
+
+        Supported providers:
+        - KALSHI (signed REST)
+
+        Returns a list with provider-tagged payloads, matching other DV client methods.
+        """
+        if provider == DataVentsProviders.KALSHI:
+            if not kalshi_ticker:
+                raise ValueError("kalshi_ticker is required for provider=KALSHI")
+            data = self.get_kalshi_market_orderbook(kalshi_ticker, depth=depth, env=kalshi_env)
+            return [{"provider": "kalshi", "data": data}]
+        elif provider == DataVentsProviders.POLYMARKET:
+            raise NotImplementedError("Polymarket does not expose REST orderbook")
+        elif provider == DataVentsProviders.ALL:
+            if not kalshi_ticker:
+                return []
+            data = self.get_kalshi_market_orderbook(kalshi_ticker, depth=depth, env=kalshi_env)
+            return [{"provider": "kalshi", "data": data}]
+        else:
+            raise ValueError(f"Invalid provider: {provider}")
