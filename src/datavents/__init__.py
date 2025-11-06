@@ -13,6 +13,7 @@ from .normalize import (
     normalize_event,
     normalize_search_response,
     normalize_market_history,
+    normalize_orderbook,
 )
 from .utils.vendors import extract_vendors, _extract_vendors
 from .utils.ws import build_ws_info, _send_ws_info, json_default, event_payload

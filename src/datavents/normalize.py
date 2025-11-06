@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union, Mapping, Iterable
 import re as _re
 
 from .schemas import (
@@ -16,6 +16,8 @@ from .schemas import (
     OrderSort,
     StatusFilter,
     MarketHistoryResponseNormalized,
+    OrderbookResponseNormalized,
+    PriceLevel,
 )
 import datetime as _dt
 
@@ -795,3 +797,122 @@ def normalize_market_history(
         raw=raw,
         points=points,
     )
+
+
+# --------------------------- Orderbook (REST) ---------------------------
+
+
+def normalize_orderbook_polymarket(raw: Mapping[str, Any], *, token_id: Optional[str] = None) -> OrderbookResponseNormalized:
+    """Normalize Polymarket CLOB /book response to a common shape.
+
+    Accepts either {"token_id": ..., "data": {...}} or the inner data object.
+    """
+    token = token_id or (str(raw.get("token_id")) if raw.get("token_id") else None)
+    data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+
+    bids: List[PriceLevel] = []
+    asks: List[PriceLevel] = []
+
+    def _levels(items: Iterable) -> List[PriceLevel]:
+        out: List[PriceLevel] = []
+        for it in items or []:
+            if not isinstance(it, Mapping):
+                continue
+            p = _normalize_probability(it.get("price"))
+            s = _safe_float(it.get("size"))
+            if p is None:
+                continue
+            out.append(PriceLevel(price=float(p), size=(float(s) if s is not None else None)))
+        return out
+
+    if isinstance(data, Mapping):
+        if isinstance(data.get("bids"), list):
+            bids = _levels(data.get("bids") or [])
+        if isinstance(data.get("asks"), list):
+            asks = _levels(data.get("asks") or [])
+
+    # Sort sides: bids desc, asks asc
+    bids.sort(key=lambda lv: lv.price, reverse=True)
+    asks.sort(key=lambda lv: lv.price)
+
+    ts = _to_ms(data.get("timestamp") if isinstance(data, Mapping) else None)
+    vendor_fields: Dict[str, Any] = {}
+    if isinstance(data, Mapping):
+        for k in ("hash", "min_order_size", "tick_size", "neg_risk"):
+            if k in data:
+                vendor_fields[k] = data.get(k)
+
+    return OrderbookResponseNormalized(
+        provider=Provider.polymarket,
+        token_id=token,
+        market=str(data.get("market") or "") if isinstance(data, Mapping) else None,
+        ts=ts,
+        bids=bids,
+        asks=asks,
+        vendor_fields=vendor_fields,
+    )
+
+
+def normalize_orderbook_kalshi(raw: Mapping[str, Any], *, ticker: Optional[str] = None) -> OrderbookResponseNormalized:
+    """Normalize Kalshi /trade-api/v2/markets/{ticker}/orderbook response.
+
+    Expects either {"data": {"orderbook": {...}}} or the inner orderbook dict.
+    """
+    container = raw.get("data") if isinstance(raw.get("data"), Mapping) else raw
+    ob = container.get("orderbook") if isinstance(container, Mapping) else container
+
+    bids: List[PriceLevel] = []
+    asks: List[PriceLevel] = []
+
+    def _pairs_to_levels(pairs: Iterable) -> List[PriceLevel]:
+        out: List[PriceLevel] = []
+        for it in pairs or []:
+            if not isinstance(it, (list, tuple)) or len(it) < 2:
+                continue
+            p = _normalize_probability(it[0])
+            s = _safe_float(it[1])
+            if p is None:
+                continue
+            out.append(PriceLevel(price=float(p), size=(float(s) if s is not None else None)))
+        return out
+
+    if isinstance(ob, Mapping):
+        yesd = ob.get("yes_dollars")
+        nod = ob.get("no_dollars")
+        yes = ob.get("yes")
+        no = ob.get("no")
+        if isinstance(yesd, list) and yesd:
+            bids = _pairs_to_levels(yesd)
+        elif isinstance(yes, list) and yes:
+            bids = _pairs_to_levels(yes)
+        if isinstance(nod, list) and nod:
+            tmp = _pairs_to_levels(nod)
+            asks = [PriceLevel(price=max(0.0, min(1.0, 1.0 - lv.price)), size=lv.size) for lv in tmp]
+        elif isinstance(no, list) and no:
+            tmp = _pairs_to_levels(no)
+            asks = [PriceLevel(price=max(0.0, min(1.0, 1.0 - lv.price)), size=lv.size) for lv in tmp]
+
+    bids.sort(key=lambda lv: lv.price, reverse=True)
+    asks.sort(key=lambda lv: lv.price)
+
+    return OrderbookResponseNormalized(
+        provider=Provider.kalshi,
+        ticker=(ticker or str(raw.get("ticker") or "") or None),
+        ts=None,
+        bids=bids,
+        asks=asks,
+        vendor_fields={"depth": (container.get("depth") if isinstance(container, Mapping) else None)},
+    )
+
+
+def normalize_orderbook(
+    provider: Provider | str,
+    raw: Mapping[str, Any],
+    *,
+    ticker: Optional[str] = None,
+    token_id: Optional[str] = None,
+) -> OrderbookResponseNormalized:
+    pv = Provider(provider) if isinstance(provider, str) else provider
+    if pv == Provider.polymarket:
+        return normalize_orderbook_polymarket(raw, token_id=token_id)
+    return normalize_orderbook_kalshi(raw, ticker=ticker)

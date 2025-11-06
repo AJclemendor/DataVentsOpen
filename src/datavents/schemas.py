@@ -375,6 +375,23 @@ class WsEnvelope(BaseModel):
     vendor_raw: Dict[str, Any] = Field(default_factory=dict)
 
 
+# --------------------------- REST Orderbook -----------------------------
+
+
+class OrderbookResponseNormalized(BaseModel):
+    provider: Provider
+    # Identifiers
+    ticker: Optional[str] = None          # Kalshi market ticker
+    token_id: Optional[str] = None        # Polymarket clob token id
+    market: Optional[str] = None          # Polymarket market/address when available
+    ts: Optional[int] = None              # epoch ms, if supplied by provider
+
+    bids: List[PriceLevel] = Field(default_factory=list)
+    asks: List[PriceLevel] = Field(default_factory=list)
+    vendor_fields: Dict[str, Any] = Field(default_factory=dict)
+    version: str = "v1"
+
+
 # --------------------------- Utility Types ------------------------------
 
 

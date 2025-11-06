@@ -690,3 +690,23 @@ class DataVentsNoAuthClient:
             return [{"provider": "kalshi", "data": data}]
         else:
             raise ValueError(f"Invalid provider: {provider}")
+
+    # Convenience normalization wrapper
+    def normalize_orderbook(
+        self,
+        provider: DataVentsProviders,
+        raw: Dict[str, Any],
+        *,
+        kalshi_ticker: Optional[str] = None,
+        polymarket_token_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        from .normalize import normalize_orderbook as _norm_ob
+        pv = provider
+        if pv == DataVentsProviders.KALSHI:
+            ob = _norm_ob(Provider.kalshi, raw, ticker=kalshi_ticker)
+        elif pv == DataVentsProviders.POLYMARKET:
+            ob = _norm_ob(Provider.polymarket, raw, token_id=polymarket_token_id)
+        else:
+            raise ValueError("normalize_orderbook only supports a single provider")
+        # Return plain dict for ergonomic JSON usage
+        return ob.model_dump()
